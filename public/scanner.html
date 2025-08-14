@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Code Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #FDFBF8; color: #333; }
+        .vulnerability-warning { color: #b91c1c; background-color: #fef2f2; border: 1px solid #fca5a5; padding: 0.75rem; border-radius: 0.5rem; }
+        .success-message { color: #15803d; background-color: #f0fdf4; border: 1px solid #86efac; padding: 0.75rem; border-radius: 0.5rem; }
+    </style>
+</head>
+<body class="antialiased p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold text-center text-cyan-800 tracking-tight mb-4">Real-Time Code Scanner</h1>
+        <p class="text-center text-lg text-gray-600 max-w-3xl mx-auto mb-8">This tool performs a simplified static analysis in your browser to find security vulnerabilities in JavaScript code.</p>
+
+        <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+            <div class="mb-4">
+                <label for="language-select" class="block text-gray-700 font-semibold mb-2">Select Language</label>
+                <select id="language-select" class="w-full p-2 border rounded-md" onchange="scanCode()">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python (Simplified)</option>
+                </select>
+            </div>
+            <textarea id="code-input" class="w-full h-64 p-4 border rounded-md text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Paste your code here..." oninput="scanCode()"></textarea>
+            <div id="results-output" class="text-left mt-6 p-4 rounded-lg min-h-[100px] text-gray-700">
+                <p class="text-gray-500">Scan results will appear here as you type.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="acorn.js"></script>
+    <script>
+        const codeInput = document.getElementById('code-input');
+        const resultsOutput = document.getElementById('results-output');
+        const languageSelect = document.getElementById('language-select');
+        
+        function scanCode() {
+            const code = codeInput.value;
+            const language = languageSelect.value;
+            
+            if (code.trim() === '') {
+                resultsOutput.innerHTML = `<p class="text-gray-500">Scan results will appear here as you type.</p>`;
+                return;
+            }
+
+            try {
+                if (language === 'javascript') {
+                    // JavaScript Scanner Logic
+                    const ast = Acorn.parse(code, { ecmaVersion: 2020 });
+                    let vulnerabilities = [];
+                    findJsVulnerabilities(ast, vulnerabilities);
+
+                    if (vulnerabilities.length > 0) {
+                        resultsOutput.innerHTML = `<div class="vulnerability-warning">
+                            <h4 class="font-bold mb-2">Vulnerability Found!</h4>
+                            <p>The code uses <code>eval()</code>, which can execute arbitrary code and is a major security risk. Avoid using it.</p>
+                        </div>`;
+                    } else {
+                        resultsOutput.innerHTML = `<div class="success-message">
+                            <p class="font-bold">No obvious vulnerabilities found.</p>
+                            <p class="text-sm">This is a simplified scan. Always use a professional tool for real-world projects.</p>
+                        </div>`;
+                    }
+
+                } else if (language === 'python') {
+                    // Simplified Python Scanner Logic
+                    let vulnerabilities = [];
+                    // This is a very basic check. A real scanner would be much more complex.
+                    if (code.includes('os.system')) {
+                        vulnerabilities.push('os.system');
+                    }
+
+                    if (vulnerabilities.length > 0) {
+                        resultsOutput.innerHTML = `<div class="vulnerability-warning">
+                            <h4 class="font-bold mb-2">Vulnerability Found!</h4>
+                            <p>The code uses <code>os.system</code>, which can execute shell commands and is a security risk.</p>
+                        </div>`;
+                    } else {
+                         resultsOutput.innerHTML = `<div class="success-message">
+                            <p class="font-bold">No obvious vulnerabilities found.</p>
+                            <p class="text-sm">This is a very simplified Python scan. Use a professional tool for real-world projects.</p>
+                        </div>`;
+                    }
+                }
+
+            } catch (e) {
+                resultsOutput.innerHTML = `<div class="vulnerability-warning">
+                    <h4 class="font-bold mb-2">Syntax Error</h4>
+                    <p>The code is not valid ${language}. Please fix the error to continue scanning.</p>
+                    <p class="text-sm mt-1">Error: ${e.message}</p>
+                </div>`;
+            }
+        }
+        
+        function findJsVulnerabilities(node, vulnerabilities) {
+            if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'eval') {
+                vulnerabilities.push('eval');
+            }
+            
+            for (let key in node) {
+                if (node.hasOwnProperty(key) && typeof node[key] === 'object' && node[key] !== null) {
+                    if (Array.isArray(node[key])) {
+                        node[key].forEach(childNode => {
+                            if (typeof childNode === 'object' && childNode !== null) {
+                                findJsVulnerabilities(childNode, vulnerabilities);
+                            }
+                        });
+                    } else {
+                        findJsVulnerabilities(node[key], vulnerabilities);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
